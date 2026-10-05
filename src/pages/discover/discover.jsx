@@ -1,330 +1,364 @@
-import { useRef, useState, useEffect } from 'react';
-import './discover.css';
-import { BiStar } from "react-icons/bi";
-import { IoFilter, IoClose } from "react-icons/io5";
+import React, { useState, useMemo } from 'react';
+import { useAudio } from '../../context/AudioContext';
+import {
+  BsSearch,
+  BsPlayFill,
+  BsPauseFill,
+  BsHeartFill,
+  BsHeart,
+  BsFilter,
+  BsGridFill,
+  BsListUl,
+  BsSpeedometer2,
+  BsStarFill,
+} from 'react-icons/bs';
+import { IoClose } from 'react-icons/io5';
 import { MdMood } from 'react-icons/md';
-import { FcRating } from 'react-icons/fc';
-import { BsSearch } from 'react-icons/bs';
-import { AiOutlineCheck } from 'react-icons/ai';
+import { FaFire } from 'react-icons/fa';
 
-const moods = ["Dark", "Chill", "Aggressive", "Sad", "Hype"];
-
-// Sample data - replace with your actual data
-const sampleContent = [
-    { id: 1, title: "Dark Vibes", mood: "Dark", rating: 4, image: "https://via.placeholder.com/200" },
-    { id: 2, title: "Chill Beats", mood: "Chill", rating: 5, image: "https://via.placeholder.com/200" },
-    { id: 3, title: "Aggressive Energy", mood: "Aggressive", rating: 3, image: "https://via.placeholder.com/200" },
-    { id: 4, title: "Sad Melodies", mood: "Sad", rating: 4, image: "https://via.placeholder.com/200" },
-    { id: 5, title: "Hype Party", mood: "Hype", rating: 5, image: "https://via.placeholder.com/200" },
-    { id: 6, title: "Dark Night", mood: "Dark", rating: 5, image: "https://via.placeholder.com/200" },
-    { id: 7, title: "Chill Sunset", mood: "Chill", rating: 4, image: "https://via.placeholder.com/200" },
-    { id: 8, title: "Aggressive Rock", mood: "Aggressive", rating: 5, image: "https://via.placeholder.com/200" },
+const SUBGENRES = [
+  'All',
+  'Drift Phonk',
+  'Memphis Underground',
+  'Brazilian Phonk',
+  'Phonkwave',
+  'Hardcore Bass',
 ];
 
+const MOODS = ['All', 'Aggressive', 'Dark', 'Hype', 'Chill', 'Nightmare', 'Sad'];
+
 const Discover = () => {
-    const [isExpand, setIsExpand] = useState(true);
-    const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
-    const hideFilterBar = useRef(null);
-    const [rating, setRating] = useState(0);
-    const [activeMood, setActiveMood] = useState(null);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [filteredContent, setFilteredContent] = useState(sampleContent);
-    const [hoverRating, setHoverRating] = useState(0);
+  const {
+    tracks,
+    currentTrack,
+    isPlaying,
+    playTrack,
+    likedTrackIds,
+    toggleLike,
+    searchQuery,
+    setSearchQuery,
+  } = useAudio();
 
-    // Handle filter toggle for desktop
-    const handleFilterToggle = () => {
-        if (window.innerWidth > 768) {
-            setIsExpand(!isExpand);
-        }
-    };
+  const [selectedGenre, setSelectedGenre] = useState('All');
+  const [selectedMood, setSelectedMood] = useState('All');
+  const [minBpm, setMinBpm] = useState(90);
+  const [sortBy, setSortBy] = useState('popular');
+  const [viewMode, setViewMode] = useState('grid');
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
-    // Handle mobile filter toggle
-    const handleMobileFilterToggle = () => {
-        setIsMobileFilterOpen(!isMobileFilterOpen);
-    };
+  // Filtered and sorted content
+  const filteredContent = useMemo(() => {
+    let result = [...tracks];
 
-    // Reset all filters
-    const handleReset = () => {
-        setActiveMood(null);
-        setRating(0);
-        setSearchQuery('');
-        setFilteredContent(sampleContent);
-    };
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (t) =>
+          t.title.toLowerCase().includes(q) ||
+          t.artist.toLowerCase().includes(q) ||
+          t.subgenre.toLowerCase().includes(q) ||
+          t.mood.toLowerCase().includes(q)
+      );
+    }
 
-    // Apply filters
-    const handleShowResults = () => {
-        let filtered = [...sampleContent];
+    if (selectedGenre !== 'All') {
+      result = result.filter((t) => t.subgenre === selectedGenre);
+    }
 
-        // Filter by mood
-        if (activeMood) {
-            filtered = filtered.filter(item => item.mood === activeMood);
-        }
+    if (selectedMood !== 'All') {
+      result = result.filter((t) => t.mood === selectedMood);
+    }
 
-        // Filter by rating
-        if (rating > 0) {
-            filtered = filtered.filter(item => item.rating >= rating);
-        }
+    if (minBpm > 90) {
+      result = result.filter((t) => t.bpm >= minBpm);
+    }
 
-        // Filter by search query
-        if (searchQuery.trim()) {
-            filtered = filtered.filter(item =>
-                item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                item.mood.toLowerCase().includes(searchQuery.toLowerCase())
-            );
-        }
+    if (sortBy === 'popular') {
+      result.sort((a, b) => b.likesCount - a.likesCount);
+    } else if (sortBy === 'latest') {
+      result.reverse();
+    } else if (sortBy === 'bpm') {
+      result.sort((a, b) => b.bpm - a.bpm);
+    }
 
-        setFilteredContent(filtered);
-        
-        // Close mobile filter after applying
-        if (window.innerWidth <= 768) {
-            setIsMobileFilterOpen(false);
-        }
-    };
+    return result;
+  }, [tracks, searchQuery, selectedGenre, selectedMood, minBpm, sortBy]);
 
-    // Auto-apply filters on change
-    useEffect(() => {
-        handleShowResults();
-    }, [activeMood, rating, searchQuery]);
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setSelectedGenre('All');
+    setSelectedMood('All');
+    setMinBpm(90);
+    setSortBy('popular');
+  };
 
-    // Handle responsive behavior
-    useEffect(() => {
-        const handleResize = () => {
-            if (window.innerWidth <= 768) {
-                setIsExpand(true);
-                setIsMobileFilterOpen(false);
-            }
-        };
-
-        window.addEventListener('resize', handleResize);
-        handleResize();
-
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
-
-    return (
-        <div className="discover-container">
-            {/* Mobile Filter Toggle Button */}
-            <button 
-                className="mobile-filter-toggle"
-                onClick={handleMobileFilterToggle}
-                aria-label="Toggle filters"
-            >
-                <IoFilter size={24} />
-                <span>Filters</span>
-                {(activeMood || rating > 0) && <span className="filter-badge"></span>}
-            </button>
-
-            {/* Overlay for mobile */}
-            {isMobileFilterOpen && (
-                <div 
-                    className="mobile-overlay"
-                    onClick={handleMobileFilterToggle}
-                ></div>
-            )}
-
-            <div className="main-bar">
-                {/* Filter Sidebar */}
-                <div 
-                    className={`filter-bar ${isMobileFilterOpen ? 'mobile-open' : ''} ${!isExpand ? 'collapsed' : ''}`}
-                    ref={hideFilterBar}
-                >
-                    <div className="filter-bar-top">
-                        {isExpand && (
-                            <h1 className="filter-title">
-                                Filters
-                            </h1>
-                        )}
-                        <div className="filter-controls">
-                            <IoFilter 
-                                className="filter-icon desktop-toggle" 
-                                onClick={handleFilterToggle}
-                                aria-label={isExpand ? "Collapse filters" : "Expand filters"}
-                                title={isExpand ? "Collapse" : "Expand"}
-                            />
-                            <IoClose 
-                                className="filter-icon mobile-close" 
-                                onClick={handleMobileFilterToggle}
-                                aria-label="Close filters"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="filter-bar-body">
-                        {/* Search Section */}
-                        {isExpand && (
-                            <div className="filter-section search-section">
-                                <div className="section-header">
-                                    <BsSearch className="section-icon text-blue-400" />
-                                    <h2>Search</h2>
-                                </div>
-                                <div className="search-input-wrapper">
-                                    <BsSearch className="search-icon-input" />
-                                    <input
-                                        type="text"
-                                        placeholder="Search content..."
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="search-input"
-                                    />
-                                    {searchQuery && (
-                                        <IoClose 
-                                            className="clear-search"
-                                            onClick={() => setSearchQuery('')}
-                                        />
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Mood Section */}
-                        <div className="filter-section mood-section">
-                            <div className="section-header">
-                                {isExpand && <h2>Mood</h2>}
-                                <MdMood className="section-icon text-yellow-500" />
-                            </div>
-                            {isExpand && (
-                                <div className="mood-list">
-                                    {moods.map((mood) => (
-                                        <li
-                                            key={mood}
-                                            className={`mood-item ${activeMood === mood ? "active" : ""}`}
-                                            onClick={() => setActiveMood(activeMood === mood ? null : mood)}
-                                        >
-                                            {activeMood === mood && <AiOutlineCheck className="check-icon" />}
-                                            {mood}
-                                        </li>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Rating Section */}
-                        <div className="filter-section rating-section">
-                            <div className="section-header">
-                                {isExpand && <h2>Minimum Rating</h2>}
-                                <FcRating className="section-icon" />
-                            </div>
-                            {isExpand && (
-                                <div className="rating-container">
-                                    <div className="stars-wrapper">
-                                        {[1, 2, 3, 4, 5].map((star) => (
-                                            <BiStar
-                                                key={star}
-                                                size={28}
-                                                className={`star ${
-                                                    star <= (hoverRating || rating)
-                                                        ? "star-active"
-                                                        : "star-inactive"
-                                                }`}
-                                                onClick={() => setRating(rating === star ? 0 : star)}
-                                                onMouseEnter={() => setHoverRating(star)}
-                                                onMouseLeave={() => setHoverRating(0)}
-                                                aria-label={`Rate ${star} stars`}
-                                            />
-                                        ))}
-                                    </div>
-                                    {rating > 0 && (
-                                        <p className="rating-text">
-                                            {rating} star{rating !== 1 ? 's' : ''} & above
-                                        </p>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Active Filters Display */}
-                        {isExpand && (activeMood || rating > 0 || searchQuery) && (
-                            <div className="active-filters">
-                                <h3>Active Filters:</h3>
-                                <div className="filter-tags">
-                                    {activeMood && (
-                                        <span className="filter-tag">
-                                            {activeMood}
-                                            <IoClose onClick={() => setActiveMood(null)} />
-                                        </span>
-                                    )}
-                                    {rating > 0 && (
-                                        <span className="filter-tag">
-                                            {rating}+ stars
-                                            <IoClose onClick={() => setRating(0)} />
-                                        </span>
-                                    )}
-                                    {searchQuery && (
-                                        <span className="filter-tag">
-                                            "{searchQuery}"
-                                            <IoClose onClick={() => setSearchQuery('')} />
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Filter Buttons */}
-                        {isExpand && (
-                            <div className="filter-buttons">
-                                <button 
-                                    className='reset-filter-btn'
-                                    onClick={handleReset}
-                                    disabled={!activeMood && rating === 0 && !searchQuery}
-                                >
-                                    Reset
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Content Area */}
-                <div className="content-area">
-                    <div className="content-header">
-                        <h1 className="content-title">Discover</h1>
-                        <p className="content-subtitle">
-                            {filteredContent.length} result{filteredContent.length !== 1 ? 's' : ''} found
-                        </p>
-                    </div>
-
-                    <div className="content-grid">
-                        {filteredContent.length > 0 ? (
-                            filteredContent.map((item) => (
-                                <div key={item.id} className="content-card">
-                                    <div className="card-image-wrapper">
-                                        <img src={item.image} alt={item.title} />
-                                        <div className="card-overlay">
-                                            <span className="mood-badge">{item.mood}</span>
-                                        </div>
-                                    </div>
-                                    <div className="card-content">
-                                        <h3 className="card-title">{item.title}</h3>
-                                        <div className="card-rating">
-                                            {[1, 2, 3, 4, 5].map((star) => (
-                                                <BiStar
-                                                    key={star}
-                                                    size={16}
-                                                    className={star <= item.rating ? "text-yellow-400" : "text-gray-600"}
-                                                />
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))
-                        ) : (
-                            <div className="no-results">
-                                <div className="no-results-icon">😕</div>
-                                <h2>No results found</h2>
-                                <p>Try adjusting your filters or search query</p>
-                                <button 
-                                    className="reset-btn-main"
-                                    onClick={handleReset}
-                                >
-                                    Clear All Filters
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
+  return (
+    <div className="min-h-screen bg-[#090a10] text-slate-100 py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
+        <div>
+          <h1 className="text-3xl sm:text-4xl font-black font-['Orbitron'] tracking-wide uppercase bg-gradient-to-r from-white to-[#00f0ff] bg-clip-text text-transparent">
+            DISCOVER PHONK TRACKS
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-400 mt-1">
+            Filter through thousands of underground beats by BPM, vibe, subgenre, and popularity.
+          </p>
         </div>
-    );
+
+        {/* View Mode & Controls */}
+        <div className="flex items-center gap-3">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-1 flex items-center">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-lg text-sm transition-all cursor-pointer ${
+                viewMode === 'grid' ? 'bg-[#ff0055] text-white' : 'text-slate-400 hover:text-white'
+              }`}
+              title="Grid View"
+            >
+              <BsGridFill />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 rounded-lg text-sm transition-all cursor-pointer ${
+                viewMode === 'list' ? 'bg-[#ff0055] text-white' : 'text-slate-400 hover:text-white'
+              }`}
+              title="List View"
+            >
+              <BsListUl />
+            </button>
+          </div>
+
+          <button
+            onClick={() => setIsMobileFilterOpen(!isMobileFilterOpen)}
+            className="md:hidden flex items-center gap-2 px-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs font-bold text-slate-200"
+          >
+            <BsFilter />
+            <span>Filters</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+        {/* Sidebar Filters */}
+        <div
+          className={`md:col-span-3 space-y-6 bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 h-fit ${
+            isMobileFilterOpen ? 'block' : 'hidden md:block'
+          }`}
+        >
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 className="font-extrabold text-sm uppercase tracking-wider font-['Orbitron'] text-white">FILTER VAULT</h3>
+            <button onClick={handleResetFilters} className="text-xs text-[#00f0ff] hover:underline font-bold">
+              Reset
+            </button>
+          </div>
+
+          {/* Search */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Search</label>
+            <div className="relative">
+              <BsSearch className="absolute left-3.5 top-3 text-slate-500 text-xs" />
+              <input
+                type="text"
+                placeholder="Track, artist..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 focus:border-[#ff0055] focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Subgenres */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Subgenre</label>
+            <div className="space-y-1">
+              {SUBGENRES.map((sg) => (
+                <button
+                  key={sg}
+                  onClick={() => setSelectedGenre(sg)}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    selectedGenre === sg
+                      ? 'bg-[#ff0055] text-white font-bold'
+                      : 'text-slate-400 hover:bg-slate-800/80 hover:text-white'
+                  }`}
+                >
+                  {sg}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Mood / Vibe */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+              <MdMood className="text-yellow-400" /> Vibe / Mood
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {MOODS.map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setSelectedMood(m)}
+                  className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                    selectedMood === m
+                      ? 'bg-[#00f0ff] text-slate-950'
+                      : 'bg-slate-950 text-slate-400 border border-slate-800 hover:border-slate-700'
+                  }`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Minimum BPM */}
+          <div className="space-y-2 pt-2 border-t border-slate-800">
+            <div className="flex justify-between items-center text-xs">
+              <span className="font-bold text-slate-400 flex items-center gap-1">
+                <BsSpeedometer2 className="text-[#00f0ff]" /> Min BPM
+              </span>
+              <span className="font-mono font-bold text-[#00f0ff]">{minBpm} BPM</span>
+            </div>
+            <input
+              type="range"
+              min="90"
+              max="180"
+              step="5"
+              value={minBpm}
+              onChange={(e) => setMinBpm(parseInt(e.target.value))}
+              className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-[#ff0055]"
+            />
+          </div>
+
+          {/* Sort By */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Sort By</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 font-semibold focus:outline-none"
+            >
+              <option value="popular">Most Liked / Popular</option>
+              <option value="latest">Latest Drops</option>
+              <option value="bpm">Fastest BPM</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Content Area */}
+        <div className="md:col-span-9">
+          <div className="mb-4 text-xs font-semibold text-slate-400 flex justify-between items-center">
+            <span>Showing {filteredContent.length} Phonk Tracks</span>
+            {selectedGenre !== 'All' && <span className="text-[#ff0055] font-bold">Filter: {selectedGenre}</span>}
+          </div>
+
+          {filteredContent.length === 0 ? (
+            <div className="py-20 text-center bg-slate-900/40 border border-slate-800 rounded-3xl p-8 space-y-4">
+              <div className="text-5xl">🎧</div>
+              <h3 className="text-xl font-bold text-white">No tracks match your current filter</h3>
+              <p className="text-xs text-slate-400">Try adjusting your BPM slider or clearing the search term.</p>
+              <button
+                onClick={handleResetFilters}
+                className="px-6 py-2.5 bg-[#ff0055] text-white font-bold text-xs uppercase tracking-wider rounded-full shadow-lg"
+              >
+                Clear All Filters
+              </button>
+            </div>
+          ) : viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredContent.map((track) => {
+                const isCurrPlaying = isPlaying && currentTrack?.id === track.id;
+                const isLiked = likedTrackIds.has(track.id);
+
+                return (
+                  <div
+                    key={track.id}
+                    onClick={() => playTrack(track)}
+                    className={`group bg-slate-900/60 border rounded-3xl p-4 transition-all duration-300 hover:-translate-y-1.5 cursor-pointer ${
+                      isCurrPlaying
+                        ? 'border-[#ff0055] shadow-[0_0_25px_rgba(255,0,85,0.4)]'
+                        : 'border-slate-800 hover:border-[#ff0055]/50'
+                    }`}
+                  >
+                    <div className="relative aspect-square rounded-2xl overflow-hidden mb-3 bg-slate-950">
+                      <img src={track.cover} alt={track.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                      <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-all" />
+
+                      <button
+                        onClick={(e) => toggleLike(track.id, e)}
+                        className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 text-slate-300 hover:text-[#ff0055] flex items-center justify-center"
+                      >
+                        {isLiked ? <BsHeartFill className="text-[#ff0055]" /> : <BsHeart />}
+                      </button>
+
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="w-12 h-12 rounded-full bg-[#ff0055] text-white flex items-center justify-center shadow-lg">
+                          {isCurrPlaying ? <BsPauseFill className="text-2xl" /> : <BsPlayFill className="text-2xl ml-0.5" />}
+                        </div>
+                      </div>
+                    </div>
+
+                    <h4 className="font-extrabold text-sm text-white group-hover:text-[#ff0055] transition-colors truncate">
+                      {track.title}
+                    </h4>
+                    <p className="text-xs text-slate-400 font-semibold">{track.artist}</p>
+
+                    <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] font-mono text-slate-500">
+                      <span className="text-[#00f0ff] font-bold">{track.subgenre}</span>
+                      <span>{track.bpm} BPM</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* List View */
+            <div className="space-y-3">
+              {filteredContent.map((track) => {
+                const isCurrPlaying = isPlaying && currentTrack?.id === track.id;
+                const isLiked = likedTrackIds.has(track.id);
+
+                return (
+                  <div
+                    key={track.id}
+                    onClick={() => playTrack(track)}
+                    className={`flex items-center justify-between gap-4 p-3 bg-slate-900/60 border rounded-2xl transition-all cursor-pointer group ${
+                      isCurrPlaying ? 'border-[#ff0055] bg-slate-900' : 'border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-4 min-w-[200px]">
+                      <div className="relative w-12 h-12 rounded-xl overflow-hidden flex-shrink-0">
+                        <img src={track.cover} alt={track.title} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                          {isCurrPlaying ? <BsPauseFill className="text-white text-xl" /> : <BsPlayFill className="text-white text-xl" />}
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="font-extrabold text-sm text-white group-hover:text-[#ff0055] transition-colors truncate">
+                          {track.title}
+                        </h4>
+                        <p className="text-xs text-slate-400">{track.artist}</p>
+                      </div>
+                    </div>
+
+                    <div className="hidden sm:block text-xs font-semibold text-[#00f0ff]">{track.subgenre}</div>
+
+                    <div className="hidden md:block text-xs font-mono text-slate-400">{track.bpm} BPM</div>
+
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-mono text-slate-400">{track.duration}</span>
+                      <button onClick={(e) => toggleLike(track.id, e)} className="text-slate-400 hover:text-[#ff0055]">
+                        {isLiked ? <BsHeartFill className="text-[#ff0055]" /> : <BsHeart />}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default Discover;
