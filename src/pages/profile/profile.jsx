@@ -4,10 +4,46 @@ import { BsPlayFill, BsPauseFill, BsHeartFill, BsCloudUpload, BsCheckCircleFill,
 import { FaSpotify, FaSoundcloud, FaInstagram, FaDiscord } from 'react-icons/fa';
 
 const Profile = () => {
-  const { user, tracks, currentTrack, isPlaying, playTrack, likedTrackIds, setIsUploadModalOpen } = useAudio();
+  const { user, logoutUser, tracks, currentTrack, isPlaying, playTrack, likedTrackIds, setIsUploadModalOpen, setIsAuthModalOpen, setAuthMode } = useAudio();
   const [activeTab, setActiveTab] = useState('my-tracks');
 
-  const myTracks = tracks.filter((t) => t.artist === user?.name || t.artist === 'KAGE_PHONK');
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-[#090a10] text-slate-100 flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-[#0e0f17] border border-[#ff0055]/30 rounded-3xl p-8 text-center shadow-[0_0_50px_rgba(255,0,85,0.2)]">
+          <div className="w-16 h-16 rounded-3xl bg-[#ff0055]/20 border border-[#ff0055]/40 flex items-center justify-center text-[#ff0055] mx-auto mb-4">
+            <BsCloudUpload className="text-3xl" />
+          </div>
+          <h2 className="text-2xl font-black font-['Orbitron'] text-white uppercase mb-2">PRODUCER VAULT</h2>
+          <p className="text-xs text-slate-400 mb-6">
+            Create an account or sign in to access your producer dashboard, uploaded Phonk beats, and statistics.
+          </p>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => {
+                setAuthMode('signup');
+                setIsAuthModalOpen(true);
+              }}
+              className="w-full py-3.5 bg-gradient-to-r from-[#ff0055] to-[#a855f7] hover:opacity-90 text-white font-extrabold rounded-2xl shadow-lg font-['Orbitron'] text-xs uppercase tracking-wider cursor-pointer"
+            >
+              CREATE PRODUCER ACCOUNT
+            </button>
+            <button
+              onClick={() => {
+                setAuthMode('signin');
+                setIsAuthModalOpen(true);
+              }}
+              className="w-full py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-2xl border border-slate-700 font-['Orbitron'] text-xs uppercase tracking-wider cursor-pointer"
+            >
+              SIGN IN TO ACCOUNT
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const myTracks = tracks.filter((t) => t.artist === user.name || t.uploader?.username === user.username);
   const likedTracks = tracks.filter((t) => likedTrackIds.has(t.id));
 
   return (
@@ -27,16 +63,16 @@ const Profile = () => {
         <div className="flex flex-col md:flex-row items-center md:items-end justify-between gap-6 pb-8 border-b border-slate-800">
           <div className="flex flex-col md:flex-row items-center md:items-end gap-6 text-center md:text-left">
             <div className="relative w-32 h-32 sm:w-36 sm:h-36 rounded-3xl overflow-hidden border-4 border-[#ff0055] shadow-[0_0_30px_rgba(255,0,85,0.4)]">
-              <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+              <img src={user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80'} alt={user.name} className="w-full h-full object-cover" />
             </div>
 
             <div className="space-y-1">
               <div className="flex items-center justify-center md:justify-start gap-2">
                 <h1 className="text-2xl sm:text-3xl font-black font-['Orbitron'] text-white">{user.name}</h1>
-                {user.verified && <BsCheckCircleFill className="text-[#00f0ff] text-xl" title="Verified Producer" />}
+                <BsCheckCircleFill className="text-[#00f0ff] text-xl" title="Verified Producer" />
               </div>
               <p className="text-xs font-mono text-slate-400">{user.username}</p>
-              <p className="text-xs text-slate-300 max-w-lg leading-relaxed pt-1">{user.bio}</p>
+              <p className="text-xs text-slate-300 max-w-lg leading-relaxed pt-1">{user.bio || 'Underground Phonk Producer'}</p>
             </div>
           </div>
 
@@ -44,16 +80,17 @@ const Profile = () => {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsUploadModalOpen(true)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#ff0055] to-[#a855f7] hover:opacity-90 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-lg cursor-pointer"
+              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#ff0055] to-[#a855f7] hover:opacity-90 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-lg cursor-pointer font-['Orbitron']"
             >
               <BsCloudUpload className="text-base" />
               <span>Upload Beat</span>
             </button>
-            <button className="p-2.5 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 rounded-xl" title="Share Vault">
-              <BsShareFill />
-            </button>
-            <button className="p-2.5 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 rounded-xl" title="Settings">
-              <BsGearFill />
+            <button
+              onClick={logoutUser}
+              className="px-4 py-2.5 bg-slate-900 border border-slate-800 hover:border-[#ff0055] text-slate-300 hover:text-[#ff0055] text-xs font-bold rounded-xl transition-all cursor-pointer font-['Orbitron'] uppercase"
+              title="Sign Out"
+            >
+              Sign Out
             </button>
           </div>
         </div>

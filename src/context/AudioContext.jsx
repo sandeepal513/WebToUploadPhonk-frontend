@@ -1,117 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { fetchTracks, uploadTrackApi, toggleLikeApi } from '../services/api';
 
 const AudioContext = createContext(null);
-
-export const INITIAL_TRACKS = [
-  {
-    id: 'track-1',
-    title: 'MIDNIGHT DRIFT GTR',
-    artist: 'KAGE_PHONK',
-    album: 'DRIFT NIGHTS VOL. 1',
-    subgenre: 'Drift Phonk',
-    duration: '2:45',
-    durationSec: 165,
-    plays: '4.8M',
-    likesCount: 184200,
-    bpm: 160,
-    rating: 5,
-    cover: '/assets/phonkimg/drift.jpg',
-    audioUrl: 'synth:drift',
-    mood: 'Aggressive',
-    featured: true,
-    description: 'Heavy distorted 808 bass, cowbell riffs & Japanese drifting atmosphere.'
-  },
-  {
-    id: 'track-2',
-    title: 'MEMPHIS RITUAL 1996',
-    artist: 'DEVILMAN_666',
-    album: 'VOID TAPES',
-    subgenre: 'Memphis Underground',
-    duration: '3:12',
-    durationSec: 192,
-    plays: '3.2M',
-    likesCount: 142100,
-    bpm: 145,
-    rating: 5,
-    cover: '/assets/phonkimg/memphis.jpg',
-    audioUrl: 'synth:memphis',
-    mood: 'Dark',
-    featured: true,
-    description: 'Raw tape distortion, lo-fi vocal chops and underground Memphis 808 bounce.'
-  },
-  {
-    id: 'track-3',
-    title: 'NIGHTMARE BASS RAGE',
-    artist: 'MC BRAZIL_DEMON',
-    album: 'RIO SUBWOOFER SHAKE',
-    subgenre: 'Brazilian Phonk',
-    duration: '2:18',
-    durationSec: 138,
-    plays: '6.1M',
-    likesCount: 298000,
-    bpm: 132,
-    rating: 5,
-    cover: '/assets/phonkimg/brazilian.jpg',
-    audioUrl: 'synth:brazilian',
-    mood: 'Hype',
-    featured: true,
-    description: 'Ultra-aggressive Brazilian Funk syncopated basslines and ear-shattering kick drops.'
-  },
-  {
-    id: 'track-4',
-    title: 'NEON HIGHWAY WAVE',
-    artist: 'CYBER_VIPER',
-    album: 'STREET DRIVER',
-    subgenre: 'Phonkwave',
-    duration: '3:40',
-    durationSec: 220,
-    plays: '1.9M',
-    likesCount: 89400,
-    bpm: 128,
-    rating: 4,
-    cover: '/assets/phonkimg/wave.jpg',
-    audioUrl: 'synth:wave',
-    mood: 'Chill',
-    featured: false,
-    description: 'Atmospheric synthwave pads blended with slowed phonk cowbell melodies.'
-  },
-  {
-    id: 'track-5',
-    title: 'DARK VOID KILLSWITCH',
-    artist: 'SHADOW_REAPER',
-    album: 'EXECUTION VOL. 2',
-    subgenre: 'Hardcore Bass',
-    duration: '2:55',
-    durationSec: 175,
-    plays: '2.4M',
-    likesCount: 112000,
-    bpm: 155,
-    rating: 5,
-    cover: '/assets/phonkimg/drift.jpg',
-    audioUrl: 'synth:drift',
-    mood: 'Nightmare',
-    featured: false,
-    description: 'Grave bass frequency overcharged with metallic percussion.'
-  },
-  {
-    id: 'track-6',
-    title: 'TOKYO STREET RACER',
-    artist: 'AKIRA_808',
-    album: 'SHUTOKO SPEEDWAY',
-    subgenre: 'Drift Phonk',
-    duration: '3:05',
-    durationSec: 185,
-    plays: '5.4M',
-    likesCount: 245000,
-    bpm: 165,
-    rating: 5,
-    cover: '/assets/phonkimg/wave.jpg',
-    audioUrl: 'synth:wave',
-    mood: 'Hype',
-    featured: true,
-    description: 'Adrenaline pumping drift anthem with heavy bass drops.'
-  }
-];
 
 export const AudioProvider = ({ children }) => {
   // Load stored tracks from localStorage if available
@@ -120,36 +10,51 @@ export const AudioProvider = ({ children }) => {
       const saved = localStorage.getItem('phonk_hub_tracks');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch (e) {
       console.warn('Could not read saved tracks:', e);
     }
-    return INITIAL_TRACKS;
+    return [];
   });
 
-  const [currentTrack, setCurrentTrack] = useState(tracks[0] || INITIAL_TRACKS[0]);
+  const [currentTrack, setCurrentTrack] = useState(tracks[0] || null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0.85);
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(currentTrack?.durationSec || 165);
-  const [likedTrackIds, setLikedTrackIds] = useState(new Set(['track-1', 'track-3']));
+  const [likedTrackIds, setLikedTrackIds] = useState(new Set());
   const [subgenreFilter, setSubgenreFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState('signin');
-  const [user, setUser] = useState({
-    name: 'PhonkProducer_808',
-    username: '@phonk808',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
-    verified: true,
-    bio: 'Underground Drift Phonk producer based in Tokyo. Creating heavy 808s and distorted tape cuts.',
-    followers: '24.5K',
-    following: '142',
-    tracksCount: 14,
+  const [user, setUser] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem('phonk_hub_user');
+      if (savedUser) return JSON.parse(savedUser);
+    } catch (e) {
+      console.warn('Could not parse user from localStorage:', e);
+    }
+    return null;
   });
+
+  // Save user changes to localStorage
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('phonk_hub_user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('phonk_hub_user');
+    }
+  }, [user]);
+
+  const logoutUser = () => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem('phonk_hub_token');
+    localStorage.removeItem('phonk_hub_user');
+  };
 
   // Audio Context & HTML Audio ref
   const audioCtxRef = useRef(null);
@@ -158,6 +63,21 @@ export const AudioProvider = ({ children }) => {
 
   // Spectrum visualizer array
   const [visualizerData, setVisualizerData] = useState(new Array(24).fill(15));
+
+  const [token, setToken] = useState(() => localStorage.getItem('phonk_hub_token') || null);
+
+  // Sync tracks with backend API on mount / filter change
+  useEffect(() => {
+    let isMounted = true;
+    async function loadApiTracks() {
+      const apiTracks = await fetchTracks(subgenreFilter, searchQuery);
+      if (isMounted && apiTracks && Array.isArray(apiTracks) && apiTracks.length > 0) {
+        setTracks(apiTracks);
+      }
+    }
+    loadApiTracks();
+    return () => { isMounted = false; };
+  }, [subgenreFilter, searchQuery]);
 
   // Save tracks to localStorage
   useEffect(() => {
@@ -423,8 +343,10 @@ export const AudioProvider = ({ children }) => {
     playTrack(tracks[prevIndex]);
   };
 
-  const toggleLike = (trackId, e) => {
+  const toggleLike = async (trackId, e) => {
     if (e) e.stopPropagation();
+    const isLikedCurrently = likedTrackIds.has(trackId);
+
     setLikedTrackIds((prev) => {
       const next = new Set(prev);
       if (next.has(trackId)) {
@@ -438,18 +360,47 @@ export const AudioProvider = ({ children }) => {
     setTracks((prev) =>
       prev.map((t) => {
         if (t.id === trackId) {
-          const isLiked = likedTrackIds.has(trackId);
           return {
             ...t,
-            likesCount: isLiked ? Math.max(0, t.likesCount - 1) : t.likesCount + 1,
+            likesCount: isLikedCurrently ? Math.max(0, (t.likesCount || 0) - 1) : (t.likesCount || 0) + 1,
           };
         }
         return t;
       })
     );
+
+    // Sync with backend API
+    await toggleLikeApi(trackId, token);
   };
 
-  const uploadTrack = (newTrack) => {
+  const uploadTrack = async (newTrack, audioFile, coverFile) => {
+    try {
+      // Try backend upload if audio file is provided
+      if (audioFile || coverFile) {
+        const formData = new FormData();
+        formData.append('title', newTrack.title);
+        formData.append('artist', newTrack.artist || user.name);
+        formData.append('subgenre', newTrack.subgenre);
+        formData.append('mood', newTrack.mood);
+        formData.append('bpm', newTrack.bpm);
+        formData.append('description', newTrack.description || '');
+        if (newTrack.cover) formData.append('customCoverUrl', newTrack.cover);
+        if (audioFile) formData.append('audio', audioFile);
+        if (coverFile) formData.append('cover', coverFile);
+
+        const res = await uploadTrackApi(formData, token);
+        if (res && res.track) {
+          setTracks((prev) => [res.track, ...prev]);
+          playTrack(res.track);
+          setIsUploadModalOpen(false);
+          return res.track;
+        }
+      }
+    } catch (err) {
+      console.warn('Backend upload failed, falling back to local track state:', err);
+    }
+
+    // Local fallback creation
     const createdTrack = {
       id: `track-${Date.now()}`,
       title: newTrack.title || 'UNTITLED PHONK BEAT',
@@ -472,6 +423,7 @@ export const AudioProvider = ({ children }) => {
     setTracks((prev) => [createdTrack, ...prev]);
     playTrack(createdTrack);
     setIsUploadModalOpen(false);
+    return createdTrack;
   };
 
   const seekTo = (seconds) => {
@@ -515,6 +467,9 @@ export const AudioProvider = ({ children }) => {
         setAuthMode,
         user,
         setUser,
+        token,
+        setToken,
+        logoutUser,
         uploadTrack,
         visualizerData,
         triggerSoundFX,

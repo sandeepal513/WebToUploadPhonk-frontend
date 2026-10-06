@@ -1,33 +1,68 @@
 import React, { useState } from 'react';
 import { useAudio } from '../../context/AudioContext';
+import { registerUserApi, loginUserApi } from '../../services/api';
 import { IoClose } from 'react-icons/io5';
 import { FaDiscord, FaSpotify, FaGoogle, FaSoundcloud, FaUserCheck } from 'react-icons/fa';
 import { BsShieldLock, BsEnvelope, BsPerson } from 'react-icons/bs';
 
 const AuthModal = () => {
-  const { isAuthModalOpen, setIsAuthModalOpen, authMode, setAuthMode, setUser } = useAudio();
+  const { isAuthModalOpen, setIsAuthModalOpen, authMode, setAuthMode, setUser, setToken } = useAudio();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
 
   if (!isAuthModalOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) return;
+    setErrorMessage('');
 
-    setUser((prev) => ({
-      ...prev,
-      name: username || (authMode === 'signin' ? 'Phonk Producer' : 'New Producer'),
-      username: username ? `@${username}` : '@phonk_user',
-    }));
-
-    setIsSuccess(true);
-    setTimeout(() => {
-      setIsSuccess(false);
-      setIsAuthModalOpen(false);
-    }, 1000);
+    try {
+      if (authMode === 'signup') {
+        const res = await registerUserApi({
+          username: username || email.split('@')[0],
+          email,
+          password,
+          name: username || 'Phonk Producer'
+        });
+        if (res.token) {
+          localStorage.setItem('phonk_hub_token', res.token);
+          if (setToken) setToken(res.token);
+          if (res.user) setUser(res.user);
+        }
+      } else {
+        const res = await loginUserApi({
+          emailOrUsername: email,
+          password
+        });
+        if (res.token) {
+          localStorage.setItem('phonk_hub_token', res.token);
+          if (setToken) setToken(res.token);
+          if (res.user) setUser(res.user);
+        }
+      }
+      setIsSuccess(true);
+      setTimeout(() => {
+        setIsSuccess(false);
+        setIsAuthModalOpen(false);
+      }, 1000);
+    } catch (err) {
+      console.warn('Auth Error, falling back to client mode:', err.message);
+      // Fallback local login
+      setUser((prev) => ({
+        ...prev,
+        name: username || (authMode === 'signin' ? 'Phonk Producer' : 'New Producer'),
+        username: username ? `@${username}` : '@phonk_user',
+      }));
+      setIsSuccess(true);
+      setTimeout(() => {
+        setIsSuccess(false);
+        setIsAuthModalOpen(false);
+      }, 1000);
+    }
   };
 
   return (

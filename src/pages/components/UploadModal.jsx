@@ -24,10 +24,10 @@ const PRESET_COVERS = [
 ];
 
 const UploadModal = () => {
-  const { isUploadModalOpen, setIsUploadModalOpen, uploadTrack, user } = useAudio();
+  const { isUploadModalOpen, setIsUploadModalOpen, uploadTrack, user, setIsAuthModalOpen, setAuthMode } = useAudio();
 
   const [title, setTitle] = useState('');
-  const [artist, setArtist] = useState(user?.name || 'Phonk Producer');
+  const [artist, setArtist] = useState(user?.name || '');
   const [subgenre, setSubgenre] = useState('Drift Phonk');
   const [mood, setMood] = useState('Aggressive');
   const [bpm, setBpm] = useState(160);
@@ -49,7 +49,7 @@ const UploadModal = () => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title) return;
 
@@ -58,16 +58,19 @@ const UploadModal = () => {
       audioUrl = URL.createObjectURL(audioFile);
     }
 
-    uploadTrack({
-      title: title.toUpperCase(),
-      artist: artist,
-      subgenre: subgenre,
-      mood: mood,
-      bpm: parseInt(bpm),
-      cover: customCoverUrl || selectedCover,
-      audioUrl: audioUrl,
-      description: description || 'Uploaded beat on Phonk Hub.',
-    });
+    await uploadTrack(
+      {
+        title: title.toUpperCase(),
+        artist: artist || user?.name || 'Producer',
+        subgenre: subgenre,
+        mood: mood,
+        bpm: parseInt(bpm),
+        cover: customCoverUrl || selectedCover,
+        audioUrl: audioUrl,
+        description: description || 'Uploaded beat on Phonk Hub.',
+      },
+      audioFile
+    );
 
     setIsSuccess(true);
     setTimeout(() => {
@@ -93,18 +96,52 @@ const UploadModal = () => {
           <IoClose className="text-xl" />
         </button>
 
-        {/* Modal Title */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-[#ff0055]/20 border border-[#ff0055]/40 flex items-center justify-center text-[#ff0055]">
-            <BsCloudUpload className="text-2xl" />
+        {!user ? (
+          <div className="py-10 text-center flex flex-col items-center">
+            <div className="w-16 h-16 rounded-3xl bg-[#ff0055]/20 border border-[#ff0055]/40 flex items-center justify-center text-[#ff0055] mb-4">
+              <BsCloudUpload className="text-3xl" />
+            </div>
+            <h3 className="text-2xl font-bold font-['Orbitron'] text-white mb-2 uppercase">ACCOUNT REQUIRED</h3>
+            <p className="text-sm text-slate-400 max-w-md mb-6">
+              Create an account or sign in to upload your Phonk beats to the global community.
+            </p>
+            <div className="flex gap-4">
+              <button
+                onClick={() => {
+                  setIsUploadModalOpen(false);
+                  setAuthMode('signup');
+                  setIsAuthModalOpen(true);
+                }}
+                className="px-6 py-3 bg-gradient-to-r from-[#ff0055] to-[#a855f7] hover:opacity-95 text-white font-extrabold rounded-2xl shadow-lg uppercase text-xs tracking-wider cursor-pointer font-['Orbitron']"
+              >
+                CREATE ACCOUNT
+              </button>
+              <button
+                onClick={() => {
+                  setIsUploadModalOpen(false);
+                  setAuthMode('signin');
+                  setIsAuthModalOpen(true);
+                }}
+                className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-2xl border border-slate-700 uppercase text-xs tracking-wider cursor-pointer font-['Orbitron']"
+              >
+                SIGN IN
+              </button>
+            </div>
           </div>
-          <div>
-            <h2 className="text-2xl font-black tracking-wider uppercase font-['Orbitron'] bg-gradient-to-r from-white via-slate-200 to-[#ff0055] bg-clip-text text-transparent">
-              UPLOAD PHONK BEAT
-            </h2>
-            <p className="text-xs text-slate-400">Share your underground tracks with thousands of listeners worldwide.</p>
-          </div>
-        </div>
+        ) : (
+          <>
+            {/* Modal Title */}
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 rounded-2xl bg-[#ff0055]/20 border border-[#ff0055]/40 flex items-center justify-center text-[#ff0055]">
+                <BsCloudUpload className="text-2xl" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-black tracking-wider uppercase font-['Orbitron'] bg-gradient-to-r from-white via-slate-200 to-[#ff0055] bg-clip-text text-transparent">
+                  UPLOAD PHONK BEAT
+                </h2>
+                <p className="text-xs text-slate-400">Publish your track directly as <span className="text-[#00f0ff] font-bold">{user.name}</span>.</p>
+              </div>
+            </div>
 
         {isSuccess ? (
           <div className="py-12 flex flex-col items-center justify-center text-center animate-scaleUp">
@@ -252,6 +289,8 @@ const UploadModal = () => {
               <span>PUBLISH TRACK TO PHONK HUB</span>
             </button>
           </form>
+        )}
+        </>
         )}
       </div>
     </div>
