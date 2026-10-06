@@ -38,6 +38,49 @@ export async function uploadTrackApi(formData, token) {
   }
 }
 
+export async function updateTrackApi(trackId, formData, token) {
+  try {
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const response = await fetch(`${API_BASE_URL}/tracks/${trackId}`, {
+      method: 'PUT',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errData = await response.json();
+      throw new Error(errData.error || 'Failed to update track');
+    }
+    return await response.json();
+  } catch (err) {
+    console.error('API Update track error:', err);
+    throw err;
+  }
+}
+
+export async function deleteTrackApi(trackId, token) {
+  try {
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const response = await fetch(`${API_BASE_URL}/tracks/${trackId}`, {
+      method: 'DELETE',
+      headers,
+    });
+
+    if (!response.ok) {
+      const errData = await response.json();
+      throw new Error(errData.error || 'Failed to delete track');
+    }
+    return await response.json();
+  } catch (err) {
+    console.error('API Delete track error:', err);
+    throw err;
+  }
+}
+
 export async function toggleLikeApi(trackId, token) {
   try {
     const headers = { 'Content-Type': 'application/json' };
@@ -75,6 +118,32 @@ export async function loginUserApi(credentials) {
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || 'Login failed');
   return data;
+}
+
+export async function uploadAvatarApi(avatarFile, token) {
+  try {
+    const formData = new FormData();
+    formData.append('avatar', avatarFile);
+
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const response = await fetch(`${API_BASE_URL}/users/avatar`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errData = await response.json();
+      throw new Error(errData.error || 'Failed to upload profile picture');
+    }
+
+    return await response.json();
+  } catch (err) {
+    console.error('Avatar Upload Error:', err);
+    throw err;
+  }
 }
 
 export async function checkBackendHealth() {

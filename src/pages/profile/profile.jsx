@@ -1,11 +1,30 @@
 import React, { useState } from 'react';
 import { useAudio } from '../../context/AudioContext';
-import { BsPlayFill, BsPauseFill, BsHeartFill, BsCloudUpload, BsCheckCircleFill, BsGearFill, BsShareFill, BsBarChartLineFill } from 'react-icons/bs';
+import { BsPlayFill, BsPauseFill, BsHeartFill, BsCloudUpload, BsCheckCircleFill, BsGearFill, BsShareFill, BsBarChartLineFill, BsCameraFill, BsPencilSquare, BsTrash } from 'react-icons/bs';
 import { FaSpotify, FaSoundcloud, FaInstagram, FaDiscord } from 'react-icons/fa';
+import EditTrackModal from '../components/EditTrackModal';
 
 const Profile = () => {
-  const { user, logoutUser, tracks, currentTrack, isPlaying, playTrack, likedTrackIds, setIsUploadModalOpen, setIsAuthModalOpen, setAuthMode } = useAudio();
+  const { user, logoutUser, tracks, currentTrack, isPlaying, playTrack, likedTrackIds, setIsUploadModalOpen, setIsAuthModalOpen, setAuthMode, updateUserAvatar, deleteTrack } = useAudio();
   const [activeTab, setActiveTab] = useState('my-tracks');
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [editingTrack, setEditingTrack] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [trackToDelete, setTrackToDelete] = useState(null);
+
+  const handleAvatarChange = async (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      try {
+        setIsUploadingAvatar(true);
+        await updateUserAvatar(file);
+      } catch (err) {
+        console.error('Avatar update failed:', err);
+      } finally {
+        setIsUploadingAvatar(false);
+      }
+    }
+  };
 
   if (!user) {
     return (
@@ -62,8 +81,21 @@ const Profile = () => {
         {/* Profile Card Header */}
         <div className="flex flex-col md:flex-row items-center md:items-end justify-between gap-6 pb-8 border-b border-slate-800">
           <div className="flex flex-col md:flex-row items-center md:items-end gap-6 text-center md:text-left">
-            <div className="relative w-32 h-32 sm:w-36 sm:h-36 rounded-3xl overflow-hidden border-4 border-[#ff0055] shadow-[0_0_30px_rgba(255,0,85,0.4)]">
+            <div className="relative w-32 h-32 sm:w-36 sm:h-36 rounded-3xl overflow-hidden border-4 border-[#ff0055] shadow-[0_0_30px_rgba(255,0,85,0.4)] group">
               <img src={user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80'} alt={user.name} className="w-full h-full object-cover" />
+              <label title="Upload avatar image to Supabase phonkhub-profile bucket" className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white cursor-pointer transition-opacity">
+                <BsCameraFill className="text-2xl mb-1 text-[#00f0ff]" />
+                <span className="text-[10px] font-extrabold uppercase font-['Orbitron']">
+                  {isUploadingAvatar ? 'UPLOADING...' : 'CHANGE PIC'}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  disabled={isUploadingAvatar}
+                  className="hidden"
+                />
+              </label>
             </div>
 
             <div className="space-y-1">
@@ -166,12 +198,87 @@ const Profile = () => {
 
                 <div className="hidden md:block text-xs font-mono text-slate-400">{track.plays} plays</div>
 
-                <div className="text-xs font-mono text-slate-400">{track.duration}</div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-mono text-slate-400">{track.duration}</span>
+
+                  {activeTab === 'my-tracks' && (
+                    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => {
+                          setEditingTrack(track);
+                          setIsEditModalOpen(true);
+                        }}
+                        className="p-2 rounded-xl bg-slate-800/80 hover:bg-[#00f0ff]/20 text-slate-300 hover:text-[#00f0ff] border border-slate-700 hover:border-[#00f0ff]/50 transition-all cursor-pointer"
+                        title="Edit Track Details"
+                      >
+                        <BsPencilSquare className="text-sm" />
+                      </button>
+
+                      <button
+                        onClick={() => setTrackToDelete(track)}
+                        className="p-2 rounded-xl bg-slate-800/80 hover:bg-[#ff0055]/20 text-slate-300 hover:text-[#ff0055] border border-slate-700 hover:border-[#ff0055]/50 transition-all cursor-pointer"
+                        title="Delete Track"
+                      >
+                        <BsTrash className="text-sm" />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
         </div>
       </div>
+
+      {/* Edit Track Modal */}
+      <EditTrackModal
+        track={editingTrack}
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingTrack(null);
+        }}
+      />
+
+      {/* Custom Delete Confirmation Popup Modal */}
+      {trackToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+          <div className="relative w-full max-w-md bg-[#0e0f17] border border-[#ff0055]/50 rounded-3xl p-6 sm:p-8 shadow-[0_0_50px_rgba(255,0,85,0.3)] text-white text-center">
+            {/* Glow Accent */}
+            <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#ff0055]/20 blur-2xl rounded-full pointer-events-none" />
+
+            <div className="w-16 h-16 rounded-3xl bg-[#ff0055]/20 border border-[#ff0055]/40 flex items-center justify-center text-[#ff0055] mx-auto mb-4 animate-bounce">
+              <BsTrash className="text-3xl" />
+            </div>
+
+            <h3 className="text-xl font-black font-['Orbitron'] text-white uppercase mb-2">
+              DELETE BEAT?
+            </h3>
+
+            <p className="text-xs text-slate-300 mb-6 leading-relaxed">
+              Are you sure you want to permanently delete <span className="text-[#ff0055] font-bold font-mono">"{trackToDelete.title}"</span>? This action cannot be undone.
+            </p>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setTrackToDelete(null)}
+                className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-2xl border border-slate-700 font-['Orbitron'] text-xs uppercase tracking-wider cursor-pointer transition-all"
+              >
+                CANCEL
+              </button>
+              <button
+                onClick={async () => {
+                  await deleteTrack(trackToDelete.id);
+                  setTrackToDelete(null);
+                }}
+                className="flex-1 py-3 bg-gradient-to-r from-[#ff0055] to-red-700 hover:opacity-90 text-white font-extrabold rounded-2xl shadow-lg font-['Orbitron'] text-xs uppercase tracking-wider cursor-pointer transition-all shadow-[0_0_20px_rgba(255,0,85,0.4)]"
+              >
+                DELETE BEAT
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

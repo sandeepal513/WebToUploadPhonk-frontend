@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { fetchTracks, uploadTrackApi, toggleLikeApi } from '../services/api';
+import { fetchTracks, uploadTrackApi, updateTrackApi, deleteTrackApi, toggleLikeApi, uploadAvatarApi } from '../services/api';
+import { uploadProfileImageToSupabaseClient } from '../services/supabase';
 
 const AudioContext = createContext(null);
 
@@ -433,6 +434,94 @@ export const AudioProvider = ({ children }) => {
     }
   };
 
+  const editTrack = async (trackId, updatedTrackData, audioFile, coverFile) => {
+    try {
+      const formData = new FormData();
+      if (updatedTrackData.title) formData.append('title', updatedTrackData.title);
+      if (updatedTrackData.artist) formData.append('artist', updatedTrackData.artist);
+      if (updatedTrackData.subgenre) formData.append('subgenre', updatedTrackData.subgenre);
+      if (updatedTrackData.mood) formData.append('mood', updatedTrackData.mood);
+      if (updatedTrackData.bpm) formData.append('bpm', updatedTrackData.bpm);
+      if (updatedTrackData.description) formData.append('description', updatedTrackData.description);
+      if (updatedTrackData.cover) formData.append('customCoverUrl', updatedTrackData.cover);
+      if (audioFile) formData.append('audio', audioFile);
+      if (coverFile) formData.append('cover', coverFile);
+
+      const res = await updateTrackApi(trackId, formData, token);
+      if (res && res.track) {
+        setTracks((prev) =>
+          prev.map((t) => (t.id === trackId ? { ...t, ...res.track } : t))
+        );
+        if (currentTrack?.id === trackId) {
+          setCurrentTrack((prev) => ({ ...prev, ...res.track }));
+        }
+        return res.track;
+      }
+    } catch (err) {
+      console.warn('Backend editTrack failed, applying local edit state:', err);
+    }
+
+    setTracks((prev) =>
+      prev.map((t) => {
+        if (t.id === trackId) {
+          const localUpdated = {
+            ...t,
+            title: updatedTrackData.title || t.title,
+            artist: updatedTrackData.artist || t.artist,
+            subgenre: updatedTrackData.subgenre || t.subgenre,
+            mood: updatedTrackData.mood || t.mood,
+            bpm: updatedTrackData.bpm || t.bpm,
+            description: updatedTrackData.description || t.description,
+            cover: updatedTrackData.cover || t.cover,
+            audioUrl: updatedTrackData.audioUrl || t.audioUrl,
+          };
+          if (currentTrack?.id === trackId) {
+            setCurrentTrack(localUpdated);
+          }
+          return localUpdated;
+        }
+        return t;
+      })
+    );
+  };
+
+  const deleteTrack = async (trackId) => {
+    try {
+      await deleteTrackApi(trackId, token);
+    } catch (err) {
+      console.warn('Backend deleteTrack failed, removing locally:', err);
+    }
+
+    setTracks((prev) => prev.filter((t) => t.id !== trackId));
+    if (currentTrack?.id === trackId) {
+      pauseTrack();
+      setCurrentTrack(null);
+    }
+  };
+
+  const updateUserAvatar = async (avatarFile) => {
+    try {
+      const res = await uploadAvatarApi(avatarFile, token);
+      if (res && res.user) {
+        setUser(res.user);
+        return res.user.avatar;
+      }
+    } catch (err) {
+      console.warn('Backend avatar upload failed, falling back to client Supabase upload:', err);
+      try {
+        const publicUrl = await uploadProfileImageToSupabaseClient(avatarFile);
+        if (publicUrl) {
+          const updatedUser = { ...user, avatar: publicUrl };
+          setUser(updatedUser);
+          return publicUrl;
+        }
+      } catch (supaErr) {
+        console.error('Client Supabase avatar upload error:', supaErr);
+        throw supaErr;
+      }
+    }
+  };
+
   return (
     <AudioContext.Provider
       value={{
@@ -471,6 +560,9 @@ export const AudioProvider = ({ children }) => {
         setToken,
         logoutUser,
         uploadTrack,
+        editTrack,
+        deleteTrack,
+        updateUserAvatar,
         visualizerData,
         triggerSoundFX,
       }}
