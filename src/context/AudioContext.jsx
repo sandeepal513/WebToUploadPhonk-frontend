@@ -4,22 +4,79 @@ import { uploadProfileImageToSupabaseClient } from '../services/supabase';
 
 const AudioContext = createContext(null);
 
+const DEFAULT_INITIAL_TRACKS = [
+  {
+    id: 'track-1',
+    title: 'MURDER IN MY MIND',
+    artist: 'KORDHELL',
+    album: 'DRIFT MANIA',
+    subgenre: 'Drift Phonk',
+    duration: '2:25',
+    durationSec: 145,
+    plays: '1.8M',
+    likesCount: 142000,
+    bpm: 160,
+    rating: 5,
+    cover: 'https://images.unsplash.com/photo-1563089145-599997674d42?auto=format&fit=crop&w=500&q=80',
+    audioUrl: 'synth:drift',
+    mood: 'Aggressive',
+    featured: true,
+    description: 'High energy drift phonk anthem featuring aggressive basslines and distorted cowbells.',
+  },
+  {
+    id: 'track-2',
+    title: 'RAVE NIGHT',
+    artist: 'DVRST',
+    album: 'MEMPHIS NIGHTS',
+    subgenre: 'Phonk House',
+    duration: '2:40',
+    durationSec: 160,
+    plays: '980K',
+    likesCount: 88000,
+    bpm: 128,
+    rating: 5,
+    cover: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=500&q=80',
+    audioUrl: 'synth:memphis',
+    mood: 'Energetic',
+    featured: true,
+    description: 'Groovy house beats infused with classic Memphis vocal chops.',
+  },
+  {
+    id: 'track-3',
+    title: 'SHADOW DANCER',
+    artist: 'GHOSTFACE PLAYA',
+    album: 'UNDERGROUND SOUNDS',
+    subgenre: 'Chill Phonk',
+    duration: '3:10',
+    durationSec: 190,
+    plays: '420K',
+    likesCount: 35000,
+    bpm: 110,
+    rating: 4,
+    cover: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=500&q=80',
+    audioUrl: 'synth:brazilian',
+    mood: 'Chill',
+    featured: false,
+    description: 'Atmospheric wave vibe with sub-bass and smooth synth pads.',
+  },
+];
+
 export const AudioProvider = ({ children }) => {
-  // Load stored tracks from localStorage if available
+  // Load stored tracks from localStorage if available, or use initial defaults
   const [tracks, setTracks] = useState(() => {
     try {
       const saved = localStorage.getItem('phonk_hub_tracks');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch (e) {
       console.warn('Could not read saved tracks:', e);
     }
-    return [];
+    return DEFAULT_INITIAL_TRACKS;
   });
 
-  const [currentTrack, setCurrentTrack] = useState(tracks[0] || null);
+  const [currentTrack, setCurrentTrack] = useState(tracks[0] || DEFAULT_INITIAL_TRACKS[0]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0.85);
   const [isMuted, setIsMuted] = useState(false);

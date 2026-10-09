@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAudio } from '../../context/AudioContext';
 import { BsPlayFill, BsPauseFill, BsHeartFill, BsHeart, BsCloudUpload, BsMusicNote, BsCheckCircleFill, BsVolumeUpFill } from 'react-icons/bs';
@@ -6,7 +6,7 @@ import { IoMdTime } from 'react-icons/io';
 import { FaFire, FaCompactDisc } from 'react-icons/fa';
 import { IoSparkles } from 'react-icons/io5';
 
-const PRODUCERS = [
+const DEFAULT_PRODUCERS = [
   {
     name: 'KAGE_PHONK',
     role: 'Drift Phonk Master',
@@ -66,6 +66,26 @@ const Home = () => {
   } = useAudio();
 
   const navigate = useNavigate();
+
+  const featuredProducers = useMemo(() => {
+    if (!tracks || tracks.length === 0) return DEFAULT_PRODUCERS;
+    const map = new Map();
+    tracks.forEach((t) => {
+      if (t.artist && !map.has(t.artist)) {
+        const artistTracks = tracks.filter((tr) => tr.artist === t.artist);
+        map.set(t.artist, {
+          name: t.artist,
+          role: `${t.subgenre || 'Phonk'} Producer`,
+          followers: `${(artistTracks.length * 12.5 + 4.2).toFixed(1)}K`,
+          tracksCount: artistTracks.length,
+          avatar: t.cover || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
+          verified: true,
+        });
+      }
+    });
+    const dynamicList = Array.from(map.values());
+    return dynamicList.length >= 4 ? dynamicList.slice(0, 4) : [...dynamicList, ...DEFAULT_PRODUCERS].slice(0, 4);
+  }, [tracks]);
 
   const filteredTracks = tracks.filter((t) => {
     if (subgenreFilter === 'All') return true;
@@ -312,7 +332,7 @@ const Home = () => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {PRODUCERS.map((producer, idx) => (
+          {featuredProducers.map((producer, idx) => (
             <div
               key={idx}
               className="bg-slate-900/80 border border-slate-800 hover:border-[#a855f7] rounded-3xl p-6 text-center space-y-4 transition-all hover:-translate-y-1.5 group"
