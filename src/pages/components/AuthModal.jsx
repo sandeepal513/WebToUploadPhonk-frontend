@@ -3,13 +3,16 @@ import { useAudio } from '../../context/AudioContext';
 import { registerUserApi, loginUserApi } from '../../services/api';
 import { IoClose } from 'react-icons/io5';
 import { FaDiscord, FaSpotify, FaGoogle, FaSoundcloud, FaUserCheck } from 'react-icons/fa';
-import { BsShieldLock, BsEnvelope, BsPerson } from 'react-icons/bs';
+import { BsShieldLock, BsEnvelope, BsPerson, BsEyeFill, BsEyeSlashFill } from 'react-icons/bs';
 
 const AuthModal = () => {
   const { isAuthModalOpen, setIsAuthModalOpen, authMode, setAuthMode, setUser, setToken } = useAudio();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [username, setUsername] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -20,13 +23,24 @@ const AuthModal = () => {
     if (!email || !password) return;
     setErrorMessage('');
 
+    if (authMode === 'signup') {
+      if (password !== confirmPassword) {
+        setErrorMessage('Passwords do not match. Please verify your password.');
+        return;
+      }
+      if (password.length < 6) {
+        setErrorMessage('Password must be at least 6 characters long.');
+        return;
+      }
+    }
+
     try {
       if (authMode === 'signup') {
         const res = await registerUserApi({
           username: username || email.split('@')[0],
           email,
           password,
-          name: username || 'Phonk Producer'
+          name: username || 'Phonk Producer',
         });
         if (res.token) {
           localStorage.setItem('phonk_hub_token', res.token);
@@ -36,7 +50,7 @@ const AuthModal = () => {
       } else {
         const res = await loginUserApi({
           emailOrUsername: email,
-          password
+          password,
         });
         if (res.token) {
           localStorage.setItem('phonk_hub_token', res.token);
@@ -51,7 +65,6 @@ const AuthModal = () => {
       }, 1000);
     } catch (err) {
       console.warn('Auth Error, falling back to client mode:', err.message);
-      // Fallback local login
       setUser((prev) => ({
         ...prev,
         name: username || (authMode === 'signin' ? 'Phonk Producer' : 'New Producer'),
@@ -83,7 +96,10 @@ const AuthModal = () => {
         {/* Header Tabs */}
         <div className="flex border-b border-slate-800 mb-6 font-['Orbitron']">
           <button
-            onClick={() => setAuthMode('signin')}
+            onClick={() => {
+              setAuthMode('signin');
+              setErrorMessage('');
+            }}
             className={`flex-1 py-3 font-bold text-sm tracking-wider uppercase transition-all border-b-2 cursor-pointer ${
               authMode === 'signin'
                 ? 'border-[#ff0055] text-[#ff0055]'
@@ -93,7 +109,10 @@ const AuthModal = () => {
             SIGN IN
           </button>
           <button
-            onClick={() => setAuthMode('signup')}
+            onClick={() => {
+              setAuthMode('signup');
+              setErrorMessage('');
+            }}
             className={`flex-1 py-3 font-bold text-sm tracking-wider uppercase transition-all border-b-2 cursor-pointer ${
               authMode === 'signup'
                 ? 'border-[#ff0055] text-[#ff0055]'
@@ -107,12 +126,20 @@ const AuthModal = () => {
         {isSuccess ? (
           <div className="py-10 text-center animate-scaleUp">
             <FaUserCheck className="text-5xl text-[#00f0ff] mx-auto mb-3 animate-bounce" />
-            <h3 className="text-xl font-extrabold text-white">SUCCESSFULLY LOGGED IN</h3>
-            <p className="text-xs text-slate-400 mt-1">Welcome back to PHONK HUB!</p>
+            <h3 className="text-xl font-extrabold text-white">
+              {authMode === 'signup' ? 'ACCOUNT CREATED SUCCESSFULLY!' : 'SUCCESSFULLY LOGGED IN'}
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">Welcome to PHONK HUB!</p>
           </div>
         ) : (
           <div>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {errorMessage && (
+                <div className="p-3 bg-red-500/10 border border-red-500/40 rounded-xl text-red-400 text-xs font-semibold text-center animate-fadeIn">
+                  {errorMessage}
+                </div>
+              )}
+
               {authMode === 'signup' && (
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Username</label>
@@ -123,7 +150,10 @@ const AuthModal = () => {
                       required
                       placeholder="e.g. drift_king_99"
                       value={username}
-                      onChange={(e) => setUsername(e.target.value)}
+                      onChange={(e) => {
+                        setUsername(e.target.value);
+                        setErrorMessage('');
+                      }}
                       className="w-full bg-slate-900 border border-slate-700 focus:border-[#ff0055] focus:outline-none rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-slate-600 transition-all"
                     />
                   </div>
@@ -139,7 +169,10 @@ const AuthModal = () => {
                     required
                     placeholder="producer@phonkhub.com"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setErrorMessage('');
+                    }}
                     className="w-full bg-slate-900 border border-slate-700 focus:border-[#ff0055] focus:outline-none rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-slate-600 transition-all"
                   />
                 </div>
@@ -150,15 +183,54 @@ const AuthModal = () => {
                 <div className="relative">
                   <BsShieldLock className="absolute left-3.5 top-3.5 text-slate-500 text-base" />
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     required
                     placeholder="••••••••••••"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 focus:border-[#ff0055] focus:outline-none rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-slate-600 transition-all"
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setErrorMessage('');
+                    }}
+                    className="w-full bg-slate-900 border border-slate-700 focus:border-[#ff0055] focus:outline-none rounded-xl pl-10 pr-10 py-2.5 text-sm text-white placeholder:text-slate-600 transition-all"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-3.5 top-3.5 text-slate-400 hover:text-[#00f0ff] transition-colors cursor-pointer"
+                    title={showPassword ? 'Hide Password' : 'Show Password'}
+                  >
+                    {showPassword ? <BsEyeSlashFill className="text-base" /> : <BsEyeFill className="text-base" />}
+                  </button>
                 </div>
               </div>
+
+              {authMode === 'signup' && (
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Confirm Password</label>
+                  <div className="relative">
+                    <BsShieldLock className="absolute left-3.5 top-3.5 text-slate-500 text-base" />
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      required
+                      placeholder="••••••••••••"
+                      value={confirmPassword}
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value);
+                        setErrorMessage('');
+                      }}
+                      className="w-full bg-slate-900 border border-slate-700 focus:border-[#ff0055] focus:outline-none rounded-xl pl-10 pr-10 py-2.5 text-sm text-white placeholder:text-slate-600 transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword((prev) => !prev)}
+                      className="absolute right-3.5 top-3.5 text-slate-400 hover:text-[#00f0ff] transition-colors cursor-pointer"
+                      title={showConfirmPassword ? 'Hide Password' : 'Show Password'}
+                    >
+                      {showConfirmPassword ? <BsEyeSlashFill className="text-base" /> : <BsEyeFill className="text-base" />}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <button
                 type="submit"

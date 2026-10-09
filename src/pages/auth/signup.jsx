@@ -1,33 +1,68 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAudio } from '../../context/AudioContext';
+import { registerUserApi } from '../../services/api';
 import { FaUserCheck } from 'react-icons/fa';
-import { BsMusicNote } from 'react-icons/bs';
+import { BsMusicNote, BsPerson, BsEnvelope, BsShieldLock, BsEyeFill, BsEyeSlashFill } from 'react-icons/bs';
 
 const Signup = () => {
-  const { setUser } = useAudio();
+  const { setUser, setToken } = useAudio();
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setUser((prev) => ({
-      ...prev,
-      name: username || 'Phonk Producer',
-      username: username ? `@${username}` : '@producer',
-    }));
-    setSubmitted(true);
-    setTimeout(() => {
-      navigate('/');
-    }, 1000);
+    setErrorMessage('');
+
+    if (password !== confirmPassword) {
+      setErrorMessage('Passwords do not match. Please verify your password.');
+      return;
+    }
+    if (password.length < 6) {
+      setErrorMessage('Password must be at least 6 characters long.');
+      return;
+    }
+
+    try {
+      const res = await registerUserApi({
+        username: username || email.split('@')[0],
+        email,
+        password,
+        name: username || 'Phonk Producer',
+      });
+      if (res.token) {
+        localStorage.setItem('phonk_hub_token', res.token);
+        if (setToken) setToken(res.token);
+        if (res.user) setUser(res.user);
+      }
+      setSubmitted(true);
+      setTimeout(() => {
+        navigate('/');
+      }, 1000);
+    } catch (err) {
+      console.warn('Signup API error, using local fallback:', err.message);
+      setUser((prev) => ({
+        ...prev,
+        name: username || 'Phonk Producer',
+        username: username ? `@${username}` : '@producer',
+      }));
+      setSubmitted(true);
+      setTimeout(() => {
+        navigate('/');
+      }, 1000);
+    }
   };
 
   return (
     <div className="min-h-screen bg-[#090a10] text-slate-100 flex items-center justify-center p-4 py-16">
-      <div className="w-full max-w-md bg-slate-900/80 border border-[#ff0055]/30 rounded-3xl p-8 shadow-[0_0_50px_rgba(255,0,85,0.2)]">
+      <div className="w-full max-w-md bg-slate-900/80 border border-[#ff0055]/30 rounded-3xl p-8 shadow-[0_0_50px_rgba(255,0,85,0.2)] relative overflow-hidden">
         <div className="text-center space-y-3 mb-8">
           <Link to="/" className="inline-flex items-center gap-2 text-2xl font-black font-['Orbitron'] text-white">
             <BsMusicNote className="text-[#ff0055]" />
@@ -44,40 +79,98 @@ const Signup = () => {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
+            {errorMessage && (
+              <div className="p-3 bg-red-500/10 border border-red-500/40 rounded-xl text-red-400 text-xs font-semibold text-center animate-fadeIn">
+                {errorMessage}
+              </div>
+            )}
+
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Producer Username</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. drift_master_99"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 focus:border-[#ff0055] focus:outline-none rounded-xl px-4 py-2.5 text-xs text-white"
-              />
+              <div className="relative">
+                <BsPerson className="absolute left-3.5 top-3.5 text-slate-500 text-base" />
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. drift_master_99"
+                  value={username}
+                  onChange={(e) => {
+                    setUsername(e.target.value);
+                    setErrorMessage('');
+                  }}
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-[#ff0055] focus:outline-none rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder:text-slate-600 transition-all"
+                />
+              </div>
             </div>
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Email Address</label>
-              <input
-                type="email"
-                required
-                placeholder="producer@phonkhub.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 focus:border-[#ff0055] focus:outline-none rounded-xl px-4 py-2.5 text-xs text-white"
-              />
+              <div className="relative">
+                <BsEnvelope className="absolute left-3.5 top-3.5 text-slate-500 text-base" />
+                <input
+                  type="email"
+                  required
+                  placeholder="producer@phonkhub.com"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setErrorMessage('');
+                  }}
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-[#ff0055] focus:outline-none rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder:text-slate-600 transition-all"
+                />
+              </div>
             </div>
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Password</label>
-              <input
-                type="password"
-                required
-                placeholder="••••••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 focus:border-[#ff0055] focus:outline-none rounded-xl px-4 py-2.5 text-xs text-white"
-              />
+              <div className="relative">
+                <BsShieldLock className="absolute left-3.5 top-3.5 text-slate-500 text-base" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  placeholder="••••••••••••"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setErrorMessage('');
+                  }}
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-[#ff0055] focus:outline-none rounded-xl pl-10 pr-10 py-2.5 text-xs text-white placeholder:text-slate-600 transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3.5 top-3.5 text-slate-400 hover:text-[#00f0ff] transition-colors cursor-pointer"
+                  title={showPassword ? 'Hide Password' : 'Show Password'}
+                >
+                  {showPassword ? <BsEyeSlashFill className="text-sm" /> : <BsEyeFill className="text-sm" />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Confirm Password</label>
+              <div className="relative">
+                <BsShieldLock className="absolute left-3.5 top-3.5 text-slate-500 text-base" />
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  required
+                  placeholder="••••••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    setErrorMessage('');
+                  }}
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-[#ff0055] focus:outline-none rounded-xl pl-10 pr-10 py-2.5 text-xs text-white placeholder:text-slate-600 transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  className="absolute right-3.5 top-3.5 text-slate-400 hover:text-[#00f0ff] transition-colors cursor-pointer"
+                  title={showConfirmPassword ? 'Hide Password' : 'Show Password'}
+                >
+                  {showConfirmPassword ? <BsEyeSlashFill className="text-sm" /> : <BsEyeFill className="text-sm" />}
+                </button>
+              </div>
             </div>
 
             <button
