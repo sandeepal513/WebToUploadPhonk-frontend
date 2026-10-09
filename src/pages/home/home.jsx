@@ -6,41 +6,6 @@ import { IoMdTime } from 'react-icons/io';
 import { FaFire, FaCompactDisc } from 'react-icons/fa';
 import { IoSparkles } from 'react-icons/io5';
 
-const DEFAULT_PRODUCERS = [
-  {
-    name: 'KAGE_PHONK',
-    role: 'Drift Phonk Master',
-    followers: '128.4K',
-    tracksCount: 24,
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
-    verified: true,
-  },
-  {
-    name: 'DEVILMAN_666',
-    role: 'Memphis Underground Legend',
-    followers: '94.2K',
-    tracksCount: 31,
-    avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=200&q=80',
-    verified: true,
-  },
-  {
-    name: 'MC BRAZIL_DEMON',
-    role: 'Brazilian Subwoofer Producer',
-    followers: '210.8K',
-    tracksCount: 18,
-    avatar: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=200&q=80',
-    verified: true,
-  },
-  {
-    name: 'CYBER_VIPER',
-    role: 'Phonkwave & Synthwave Specialist',
-    followers: '65.1K',
-    tracksCount: 15,
-    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&q=80',
-    verified: false,
-  },
-];
-
 const SUBGENRE_FILTERS = [
   'All',
   'Drift Phonk',
@@ -68,7 +33,7 @@ const Home = () => {
   const navigate = useNavigate();
 
   const featuredProducers = useMemo(() => {
-    if (!tracks || tracks.length === 0) return DEFAULT_PRODUCERS;
+    if (!tracks || tracks.length === 0) return [];
     const map = new Map();
     tracks.forEach((t) => {
       if (t.artist && !map.has(t.artist)) {
@@ -78,13 +43,12 @@ const Home = () => {
           role: `${t.subgenre || 'Phonk'} Producer`,
           followers: `${(artistTracks.length * 12.5 + 4.2).toFixed(1)}K`,
           tracksCount: artistTracks.length,
-          avatar: t.cover || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
+          avatar: t.cover || '',
           verified: true,
         });
       }
     });
-    const dynamicList = Array.from(map.values());
-    return dynamicList.length >= 4 ? dynamicList.slice(0, 4) : [...dynamicList, ...DEFAULT_PRODUCERS].slice(0, 4);
+    return Array.from(map.values()).slice(0, 4);
   }, [tracks]);
 
   const filteredTracks = tracks.filter((t) => {
