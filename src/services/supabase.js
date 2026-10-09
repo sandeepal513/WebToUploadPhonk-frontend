@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ypmcdnywfarjlcuxtamz.supabase.co';
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_7ziSnHK9SJwiLyKCPCBWng_QpMNkfVm';
 
-export const AUDIO_BUCKET = import.meta.env.VITE_SUPABASE_AUDIO_BUCKET || 'phonkHub-audio';
+export const AUDIO_BUCKET = import.meta.env.VITE_SUPABASE_AUDIO_BUCKET || 'phonkhub-audio';
 export const PROFILE_BUCKET = import.meta.env.VITE_SUPABASE_PROFILE_BUCKET || 'phonkhub-profile';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
